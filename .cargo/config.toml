@@ -1,0 +1,8 @@
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+
+# ring's C sources cannot be compiled for wasm32 by Apple clang.
+# Point the C compiler at Homebrew LLVM (brew install llvm).
+[env]
+CC_wasm32-unknown-unknown = "/opt/homebrew/opt/llvm/bin/clang"
+AR_wasm32-unknown-unknown = "/opt/homebrew/opt/llvm/bin/llvm-ar"

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>iroh-web echo example</title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; }
+      textarea, input { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
+      pre { background: #f4f4f4; padding: .5rem; overflow: auto; max-height: 20rem; }
+      fieldset { margin-bottom: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>iroh-web echo</h1>
+    <p>
+      Open this page twice (two tabs, or two machines), paste one tab's ticket into the other and
+      send a message. The receiving tab echoes it back over a bidirectional QUIC stream via a relay.
+    </p>
+    <fieldset>
+      <legend>Endpoint</legend>
+      <label>Relay URL (leave empty for n0's public relays; dev-only, rate-limited)
+        <input id="relay" placeholder="http://localhost:3340" />
+      </label>
+      <p><button id="bind">Bind endpoint</button></p>
+      <p>My ticket:</p>
+      <textarea id="ticket" rows="3" readonly></textarea>
+    </fieldset>
+    <fieldset>
+      <legend>Dial</legend>
+      <label>Peer ticket <textarea id="peer" rows="3"></textarea></label>
+      <label>Message <input id="message" value="hello over iroh" /></label>
+      <p><button id="send" disabled>Send and wait for echo</button></p>
+    </fieldset>
+    <pre id="log"></pre>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

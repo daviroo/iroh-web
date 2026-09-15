@@ -1,0 +1,32 @@
+[package]
+name = "iroh-web-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Minimal wasm-bindgen bindings around an iroh Endpoint for browsers"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bytes = "1"
+console_error_panic_hook = "0.1.7"
+futures-util = { version = "0.3", default-features = false }
+getrandom = { version = "0.4", features = ["wasm_js"] }
+iroh = { version = "1.2", default-features = false, features = ["tls-ring"] }
+iroh-tickets = "1.0"
+js-sys = "0.3"
+n0-future = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
+tracing-subscriber-wasm = "0.1"
+wasm-bindgen = "=0.2.128"
+wasm-bindgen-futures = "0.4"
+# Kept on the same version as iroh-relay pulls in: two copies make wasm-bindgen emit
+# duplicate (renamed, unexported) IntoUnderlying* classes and the glue fails to import.
+wasm-streams = "0.5"
+
+# wasm-opt is run explicitly by the package build script (see packages/iroh-web/package.json).
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

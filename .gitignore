@@ -3,3 +3,4 @@ pkg/
 node_modules/
 dist/
 .DS_Store
+tests/browser/__screenshots__/

@@ -1,0 +1,39 @@
+{
+  "name": "iroh-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Run an iroh endpoint in the browser (Rust/WebAssembly with a thin TypeScript API).",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "pkg/iroh_web_wasm.js",
+    "pkg/iroh_web_wasm_bg.js",
+    "pkg/iroh_web_wasm_bg.wasm",
+    "pkg/iroh_web_wasm.d.ts",
+    "pkg/iroh_web_wasm_bg.wasm.d.ts",
+    "pkg/snippets"
+  ],
+  "sideEffects": [
+    "./pkg/iroh_web_wasm.js",
+    "./pkg/snippets/*"
+  ],
+  "scripts": {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build:wasm:dev": "node scripts/build-wasm.mjs --dev",
+    "build:ts": "tsc -p tsconfig.json",
+    "build": "pnpm build:wasm && pnpm build:ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
