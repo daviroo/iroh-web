@@ -1,4 +1,4 @@
-import { Endpoint, IrohError, initLogging, readAll, writeAll } from 'iroh-web'
+import { Endpoint, IrohError, initLogging, readAll, writeAll } from '@daviroo/iroh-web'
 
 const ALPN = 'iroh-web/example-echo/0'
 

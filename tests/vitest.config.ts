@@ -5,7 +5,7 @@ import { nodeDial, nodeDialAndClose, nodeParseTicket, startNodePeer, stopNodePee
 export default defineConfig({
   plugins: [wasm()],
   build: { target: 'esnext' },
-  optimizeDeps: { exclude: ['iroh-web'] },
+  optimizeDeps: { exclude: ['@daviroo/iroh-web'] },
   test: {
     include: ['browser/**/*.test.ts'],
     globalSetup: ['./setup/global.ts'],

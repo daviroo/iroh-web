@@ -6,8 +6,18 @@ WebAssembly with `wasm-bindgen`, plus a thin TypeScript API on top, packaged for
 It is protocol-agnostic: you get an `Endpoint`, `Connection`s and QUIC streams as
 WHATWG `ReadableStream` / `WritableStream`, and build your own ALPN protocol on top.
 
-Status: working first version (v0.1). The package name `iroh-web` is a placeholder and
-the package is marked `private`, so it cannot be published by accident.
+Status: working first version (v0.1).
+
+## Install
+
+```sh
+pnpm add @daviroo/iroh-web
+```
+
+Consumers need a bundler that understands ES-module wasm imports. With Vite, use
+[`vite-plugin-wasm`](https://github.com/Menci/vite-plugin-wasm) and
+`build.target: 'esnext'` (or `vite-plugin-top-level-await`). See
+`examples/echo/vite.config.ts`.
 
 ## Limits you should know about
 
@@ -54,9 +64,11 @@ Build tools (macOS, Apple Silicon paths shown):
 | Node 20.3+ and pnpm | TypeScript build, tests | |
 | `iroh-relay` | local relay for the tests and example | binary from the [iroh releases](https://github.com/n0-computer/iroh/releases) (this repo was tested with v1.2.0), or `cargo install iroh-relay` |
 
-`.cargo/config.toml` points the wasm32 C compiler at `/opt/homebrew/opt/llvm/bin/clang`
-so no global PATH change is needed. Override with `CC_wasm32_unknown_unknown` and
-`AR_wasm32_unknown_unknown` on other setups.
+The wasm build script selects Homebrew LLVM from `/opt/homebrew/opt/llvm/bin`
+when available, so no global PATH change is needed. On Linux, install clang and
+LLVM. Override the compiler with `CC_wasm32_unknown_unknown` and
+`AR_wasm32_unknown_unknown` on other setups. For direct Cargo commands on macOS,
+set those variables to the Homebrew `clang` and `llvm-ar` paths.
 
 ## Build
 
@@ -64,12 +76,12 @@ so no global PATH change is needed. Override with `CC_wasm32_unknown_unknown` an
 pnpm install
 pnpm build            # wasm-pack --release --target bundler, then wasm-opt -Oz, then tsc
 pnpm build:wasm       # only the wasm step
-pnpm --filter iroh-web build:wasm:dev   # fast unoptimised wasm for development
+pnpm --filter @daviroo/iroh-web build:wasm:dev   # fast unoptimised wasm for development
 pnpm typecheck
 ```
 
-The wasm step writes `packages/iroh-web/pkg/` in the same layout as
-`@fedibtc/peerbadge-sdk-wasm` (bundler target, `.d.ts` included):
+The wasm step writes `packages/iroh-web/pkg/` in the standard
+wasm-pack bundler-target layout (`.d.ts` included):
 
 ```
 pkg/iroh_web_wasm.js         # re-exports, imports the .wasm as an ES module
@@ -131,10 +143,10 @@ one tab's ticket into the other and send.
 
 ## API
 
-Everything is exported from `iroh-web`. All async operations reject with an `IrohError`.
+Everything is exported from `@daviroo/iroh-web`. All async operations reject with an `IrohError`.
 
 ```ts
-import { Endpoint, EndpointAddr, IrohError, SecretKey, readAll, writeAll } from 'iroh-web'
+import { Endpoint, EndpointAddr, IrohError, SecretKey, readAll, writeAll } from '@daviroo/iroh-web'
 
 const ALPN = 'my-app/echo/0'
 
@@ -248,6 +260,12 @@ Call it at most once per page load.
 - `@number0/iroh` 1.1.0 can dial a relay-only browser peer, so both directions are
   tested. Its `package.json` `main` points at a missing file; import
   `@number0/iroh/index.js` directly.
+
+## Acknowledgements
+
+The wasm-bindgen setup follows n0's `browser-echo` and `browser-chat` examples in
+[iroh-examples](https://github.com/n0-computer/iroh-examples), licensed
+MIT OR Apache-2.0.
 
 ## License
 

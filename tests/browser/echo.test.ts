@@ -9,7 +9,7 @@ import {
   initLogging,
   readAll,
   writeAll,
-} from 'iroh-web'
+} from '@daviroo/iroh-web'
 
 const ALPN = 'iroh-web/test-echo/0'
 const relayUrl = inject('relayUrl')

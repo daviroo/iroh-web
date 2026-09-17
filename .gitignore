@@ -4,3 +4,9 @@ node_modules/
 dist/
 .DS_Store
 tests/browser/__screenshots__/
+
+# Copied from the repository root by prepack.
+/packages/iroh-web/README.md
+/packages/iroh-web/LICENSE-MIT
+/packages/iroh-web/LICENSE-APACHE
+*.tgz

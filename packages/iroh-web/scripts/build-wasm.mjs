@@ -1,7 +1,7 @@
 // Builds crates/iroh-web-wasm with wasm-pack (bundler target) into ./pkg and
 // shrinks the result with wasm-opt. Pass --dev for a fast unoptimised build.
 import { execFileSync } from 'node:child_process'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, statSync, rmSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -57,3 +57,6 @@ const raw = statSync(wasmFile).size
 const gz = gzipSync(readFileSync(wasmFile), { level: 9 }).length
 const kib = (n) => `${(n / 1024).toFixed(0)} KiB`
 console.log(`\n${wasmFile}\n  raw:  ${kib(raw)}\n  gzip: ${kib(gz)}`)
+
+// Keep npm from excluding the generated wasm assets.
+rmSync(resolve(outDir, '.gitignore'), { force: true })

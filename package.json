@@ -5,8 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@10.33.2",
   "scripts": {
-    "build:wasm": "pnpm --filter iroh-web build:wasm",
-    "build": "pnpm --filter iroh-web build",
+    "build:wasm": "pnpm --filter @daviroo/iroh-web build:wasm",
+    "build": "pnpm --filter @daviroo/iroh-web build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter iroh-web-tests test",
     "example": "pnpm --filter iroh-web-example-echo dev"

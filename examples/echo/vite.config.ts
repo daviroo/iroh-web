@@ -4,5 +4,5 @@ import wasm from 'vite-plugin-wasm'
 export default defineConfig({
   plugins: [wasm()],
   build: { target: 'esnext' },
-  optimizeDeps: { exclude: ['iroh-web'] },
+  optimizeDeps: { exclude: ['@daviroo/iroh-web'] },
 })

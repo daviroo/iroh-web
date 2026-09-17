@@ -1,7 +1,6 @@
 {
-  "name": "iroh-web",
+  "name": "@daviroo/iroh-web",
   "version": "0.1.0",
-  "private": true,
   "description": "Run an iroh endpoint in the browser (Rust/WebAssembly with a thin TypeScript API).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -20,7 +19,10 @@
     "pkg/iroh_web_wasm_bg.wasm",
     "pkg/iroh_web_wasm.d.ts",
     "pkg/iroh_web_wasm_bg.wasm.d.ts",
-    "pkg/snippets"
+    "pkg/snippets",
+    "README.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
   ],
   "sideEffects": [
     "./pkg/iroh_web_wasm.js",
@@ -31,9 +33,31 @@
     "build:wasm:dev": "node scripts/build-wasm.mjs --dev",
     "build:ts": "tsc -p tsconfig.json",
     "build": "pnpm build:wasm && pnpm build:ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "node scripts/prepack.mjs",
+    "prepublishOnly": "node scripts/check-build.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daviroo/iroh-web.git",
+    "directory": "packages/iroh-web"
+  },
+  "homepage": "https://github.com/daviroo/iroh-web#readme",
+  "bugs": {
+    "url": "https://github.com/daviroo/iroh-web/issues"
+  },
+  "keywords": [
+    "iroh",
+    "wasm",
+    "webassembly",
+    "browser",
+    "quic",
+    "p2p"
+  ]
 }

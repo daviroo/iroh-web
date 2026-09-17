@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "iroh-web": "workspace:*",
+    "@daviroo/iroh-web": "workspace:*",
     "typescript": "^5.9.0",
     "vite": "^6.4.3",
     "vite-plugin-wasm": "^3.6.0"
