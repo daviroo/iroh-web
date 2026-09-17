@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC_wasm32_unknown_unknown: clang
+      AR_wasm32_unknown_unknown: llvm-ar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/.wasm-pack
+          key: wasm-pack-${{ runner.os }}-0.15.0-${{ hashFiles('Cargo.lock') }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install native tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm
+          mkdir -p "$RUNNER_TEMP/iroh-tools"
+          cd "$RUNNER_TEMP/iroh-tools"
+          curl -fsSL https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.0/wasm-pack-v0.15.0-x86_64-unknown-linux-musl.tar.gz | tar -xz
+          curl -fsSL https://github.com/WebAssembly/binaryen/releases/download/version_132/binaryen-version_132-x86_64-linux.tar.gz | tar -xz
+          curl -fsSL https://github.com/n0-computer/iroh/releases/download/v1.2.0/iroh-relay-v1.2.0-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          echo "$RUNNER_TEMP/iroh-tools/wasm-pack-v0.15.0-x86_64-unknown-linux-musl" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/iroh-tools/binaryen-version_132/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/iroh-tools" >> "$GITHUB_PATH"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter iroh-web-tests exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: cargo clippy --target wasm32-unknown-unknown -p iroh-web-wasm -- -D warnings
+      - run: pnpm test
+      - name: Check package
+        working-directory: packages/iroh-web
+        run: |
+          node scripts/check-build.mjs
+          npm pack --dry-run
