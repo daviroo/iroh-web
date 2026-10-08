@@ -22,6 +22,10 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            tests/native-iroh-1
       - uses: actions/cache@v4
         with:
           path: ~/.cache/.wasm-pack

@@ -35,7 +35,11 @@ export const startNativePeer: BrowserCommand<[relayUrl: string]> = async (_ctx, 
       else waiter?.resolve(value)
     } catch (err) { waiter?.reject(new Error(`invalid native response: ${line}`, { cause: err })) }
   })
-  child.on('error', (err) => pending?.reject(err))
+  child.on('error', (err: NodeJS.ErrnoException) => pending?.reject(
+    err.code === 'ENOENT'
+      ? new Error('Native iroh 1.0 peer binary not found. From the repository root, run: cargo build --locked --manifest-path tests/native-iroh-1/Cargo.toml', { cause: err })
+      : err,
+  ))
   child.on('exit', (code) => pending?.reject(new Error(`iroh 1.0 peer exited (${code}):\n${stderr}`)))
   return ready
 }

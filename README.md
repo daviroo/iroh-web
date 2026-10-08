@@ -125,7 +125,10 @@ Consumers need a bundler that understands ES-module wasm imports. With Vite that
 pnpm test
 ```
 
-This first builds `tests/native-iroh-1/` with its own locked Cargo workspace
+If invoking Vitest directly, first build the native peer from the repository root:
+`cargo build --locked --manifest-path tests/native-iroh-1/Cargo.toml`.
+
+`pnpm test` first builds `tests/native-iroh-1/` with its own locked Cargo workspace
 (`iroh = "=1.0.0"`, relay/base locked to 1.0.0; the wasm lockfile is untouched).
 It starts `iroh-relay --dev` on port 3340 (plain HTTP, no TLS), launches headless
 Chromium through Playwright, binds endpoints in the page, the Vitest Node process

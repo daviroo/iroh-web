@@ -5,6 +5,7 @@ import wasm from 'vite-plugin-wasm'
 import { chromium } from 'playwright'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
+const pkgDir = fileURLToPath(new URL('../../packages/iroh-web/', import.meta.url))
 const result = await build({
   root,
   configFile: false,
@@ -19,11 +20,11 @@ const entry = output.find((item) => item.type === 'chunk' && item.isEntry)
 const staticChunks = new Set()
 function visit(chunk) {
   staticChunks.add(chunk.fileName)
-  assert(!Object.keys(chunk.modules).some((id) => id.includes('/iroh-web/')), 'iroh must not be in the initial static graph')
+  assert(!Object.keys(chunk.modules).some((id) => id.startsWith(pkgDir)), 'iroh must not be in the initial static graph')
   for (const name of chunk.imports) visit(output.find((item) => item.fileName === name))
 }
 visit(entry)
-assert(output.some((item) => item.type === 'chunk' && !staticChunks.has(item.fileName) && Object.keys(item.modules).some((id) => id.includes('/iroh-web/'))))
+assert(output.some((item) => item.type === 'chunk' && !staticChunks.has(item.fileName) && Object.keys(item.modules).some((id) => id.startsWith(pkgDir))))
 console.log('[lazy-build] dist chunks:', output.map((item) => item.fileName).join(', '))
 
 const server = await preview({ root, configFile: false, preview: { host: '127.0.0.1', port: 0 } })
