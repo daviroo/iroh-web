@@ -19,6 +19,18 @@ Consumers need a bundler that understands ES-module wasm imports. With Vite, use
 `build.target: 'esnext'` (or `vite-plugin-top-level-await`). See
 `examples/echo/vite.config.ts`.
 
+For optional features, load the package from a lazy module:
+
+```ts
+// In a module that the app itself loads with import().
+const { Endpoint, readAll, writeAll } = await import('@daviroo/iroh-web')
+```
+
+Set `optimizeDeps.exclude: ['@daviroo/iroh-web']` in Vite. The package's static
+ESM wasm import stays behind that dynamic boundary: Vite emits a separate wasm
+asset and lazy JavaScript chunks. `pnpm test` builds a minimal consumer and checks
+in Chromium that no wasm is fetched initially, then binds an endpoint after a click.
+
 ## Limits you should know about
 
 - **Relay-only.** Browsers cannot open UDP sockets, so the endpoint talks to an iroh
@@ -34,6 +46,11 @@ Consumers need a bundler that understands ES-module wasm imports. With Vite, use
 - **Ticket, not bare id.** When you pass `relayUrls`, no address lookup service is
   configured, so peers must be dialled with a ticket (or an `EndpointAddr`) that
   carries their relay URL. Dialling a bare endpoint id only works with the n0 default.
+- **Connect deadline.** Ticket-based dialing to an unreachable relay rejects with
+  `IrohError` code `timed_out` after approximately 30 seconds in the tested iroh 1.2
+  build. There is no `timeoutMs` option; this is the transport's timeout, not a
+  configurable application deadline. `online()` has no deadline and is not needed
+  before dialing a ticket (it is needed before advertising your own relay address).
 - **Left out of v0.1:** datagrams, watchers (relay status, net report), remote peer
   info, runtime relay add/remove, custom address lookup and transports, metrics,
   iroh-gossip, iroh-blobs.
@@ -44,7 +61,7 @@ Consumers need a bundler that understands ES-module wasm imports. With Vite, use
 |------|------|
 | `crates/iroh-web-wasm/` | Rust crate: minimal, low-level `wasm-bindgen` exports around `iroh::Endpoint` |
 | `packages/iroh-web/` | The npm package: TypeScript wrapper (`src/`) plus the `wasm-pack` output (`pkg/`, generated) |
-| `tests/` | Vitest browser-mode tests. A Chromium endpoint talks to a Node peer built on `@number0/iroh` through a local `iroh-relay` |
+| `tests/` | Chromium tests against Node iroh 1.1 and an isolated Rust iroh 1.0 peer, plus a lazy Vite build/runtime check |
 | `examples/echo/` | Minimal Vite page: bind an endpoint, show a ticket, dial another tab and get an echo |
 
 The design rule is: keep the `wasm-bindgen` surface small and stable, and put the
@@ -62,7 +79,7 @@ Build tools (macOS, Apple Silicon paths shown):
 | `wasm-pack` 0.15 | runs cargo + `wasm-bindgen-cli` (downloaded or built on first use to match the pinned `wasm-bindgen` version) | `brew install wasm-pack` |
 | `binaryen` (`wasm-opt`) | shrinks the `.wasm` | `brew install binaryen` |
 | Node 20.3+ and pnpm | TypeScript build, tests | |
-| `iroh-relay` | local relay for the tests and example | binary from the [iroh releases](https://github.com/n0-computer/iroh/releases) (this repo was tested with v1.2.0), or `cargo install iroh-relay` |
+| `iroh-relay` | local relay for the tests and example | binary from the [iroh releases](https://github.com/n0-computer/iroh/releases) (tested with v1.2.0), or `cargo install iroh-relay --version 1.2.0` |
 
 The wasm build script selects Homebrew LLVM from `/opt/homebrew/opt/llvm/bin`
 when available, so no global PATH change is needed. On Linux, install clang and
@@ -108,9 +125,11 @@ Consumers need a bundler that understands ES-module wasm imports. With Vite that
 pnpm test
 ```
 
-This starts `iroh-relay --dev` on port 3340 (plain HTTP, no TLS), launches headless
-Chromium through Playwright, binds an iroh endpoint in the page and a second one in the
-Vitest Node process using `@number0/iroh`, and checks:
+This first builds `tests/native-iroh-1/` with its own locked Cargo workspace
+(`iroh = "=1.0.0"`, relay/base locked to 1.0.0; the wasm lockfile is untouched).
+It starts `iroh-relay --dev` on port 3340 (plain HTTP, no TLS), launches headless
+Chromium through Playwright, binds endpoints in the page, the Vitest Node process
+using `@number0/iroh` 1.1, and the Rust 1.0 process, and checks:
 
 - ticket round trip in the browser, and that `@number0/iroh` parses the same ticket
 - secret key generate, import and export
@@ -119,6 +138,16 @@ Vitest Node process using `@number0/iroh`, and checks:
 - a remote `close(42, "bye")` arrives as `application_closed` with `errorCode` and `reason`
 - dialling an unknown id with custom relays fails with `no_address`
 - dialling with an ALPN the peer does not accept fails with `connection_closed`
+- browser 1.2 dials a Rust 1.0 ticket, sends 256 KiB + FIN and reads echo through FIN
+- Rust 1.0 dials a browser ticket, sends bytes + FIN and reads echo through FIN;
+  native IP transports are disabled so neither direction can bypass the relay
+- an unreachable relay rejects with `timed_out` within 45 seconds
+- a production Vite build emits separate lazy JS/wasm files and only fetches wasm
+  when the lazy feature is invoked (the check prints the `tests/build/dist/` chunks)
+
+The 1.0/1.2 echo interop checks exercise one bidirectional stream per request,
+with FIN delimiting both the request and response. They verify transport
+compatibility, not application-specific protocols or codecs.
 
 Run `pnpm exec playwright install chromium` in `tests/` once if Chromium is missing.
 
@@ -260,6 +289,8 @@ Call it at most once per page load.
 - `@number0/iroh` 1.1.0 can dial a relay-only browser peer, so both directions are
   tested. Its `package.json` `main` points at a missing file; import
   `@number0/iroh/index.js` directly.
+- Rust `iroh = "=1.0.0"` is also tested in both directions through the local
+  relay, with a separate Cargo.lock under `tests/native-iroh-1/`.
 
 ## Acknowledgements
 
