@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "cargo build --locked --manifest-path native-iroh-1/Cargo.toml && vitest run && node build/check-lazy.mjs",
+    "test:watch": "cargo build --locked --manifest-path native-iroh-1/Cargo.toml && vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
