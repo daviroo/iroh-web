@@ -241,11 +241,11 @@ export interface EndpointOptions {
   /** ALPNs to accept incoming connections for. Leave empty for a dial-only endpoint. */
   alpns?: readonly Alpn[]
   /**
-   * Relay servers to use. When omitted, n0's public relays and pkarr address
-   * publishing are used (fine for development, rate-limited; self-host for
-   * production). When given, only these relays are used and no address lookup
-   * service is configured, so peers must be dialled with a ticket or an
-   * address that includes a relay URL.
+   * Relay servers to use. When omitted, both bind methods use n0's public
+   * relays (rate-limited; self-host for production), but only `Endpoint.bind`
+   * publishes an address to pkarr. With custom relays, `Endpoint.bind` has no
+   * address lookup; `Endpoint.bindLookupOnly` resolves via HTTPS pkarr with
+   * either relay configuration.
    */
   relayUrls?: readonly string[]
 }
@@ -262,6 +262,22 @@ export class Endpoint {
   static async bind(options: EndpointOptions = {}): Promise<Endpoint> {
     const inner = await wrap(
       wasm.Endpoint.bind(
+        options.secretKey?.toBytes(),
+        (options.alpns ?? []).map(alpnBytes),
+        options.relayUrls === undefined ? undefined : [...options.relayUrls],
+      ),
+    )
+    return new Endpoint(inner)
+  }
+
+  /**
+   * Binds an endpoint that resolves bare peer IDs through n0's HTTPS pkarr
+   * service without publishing its own address. Relay registration still
+   * happens as usual, and connections authenticate the requested peer ID.
+   */
+  static async bindLookupOnly(options: EndpointOptions = {}): Promise<Endpoint> {
+    const inner = await wrap(
+      wasm.Endpoint.bindLookupOnly(
         options.secretKey?.toBytes(),
         (options.alpns ?? []).map(alpnBytes),
         options.relayUrls === undefined ? undefined : [...options.relayUrls],

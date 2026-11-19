@@ -39,13 +39,14 @@ in Chromium that no wasm is fetched initially, then binds an endpoint after a cl
 - **Secure context required.** The page must be served over `https://` or from
   `localhost`. Browsers also block `ws://` relays from an `https://` page, so a
   production relay must be reachable over `https://`.
-- **Self-host a relay for production.** By default the endpoint uses n0's public relays
-  and pkarr address publishing. Those are rate-limited and intended for development
-  only. Run your own [`iroh-relay`](https://github.com/n0-computer/iroh/tree/main/iroh-relay)
+- **Self-host a relay for production.** Both bind methods default to n0's public relays,
+  which are rate-limited and intended for development. Only `Endpoint.bind` publishes
+  your address to pkarr by default. Run your own [`iroh-relay`](https://github.com/n0-computer/iroh/tree/main/iroh-relay)
   and pass its URL in `relayUrls`.
-- **Ticket, not bare id.** When you pass `relayUrls`, no address lookup service is
-  configured, so peers must be dialled with a ticket (or an `EndpointAddr`) that
-  carries their relay URL. Dialling a bare endpoint id only works with the n0 default.
+- **Ticket or bare ID.** With custom `relayUrls`, `Endpoint.bind` needs a ticket or an
+  `EndpointAddr` carrying the peer's relay URL. Use `Endpoint.bindLookupOnly` to dial
+  a bare ID published to n0's pkarr service without publishing your own address there.
+  Your endpoint still registers with its transport relay.
 - **Connect deadline.** Ticket-based dialing to an unreachable relay rejects with
   `IrohError` code `timed_out` after approximately 30 seconds in the tested iroh 1.2
   build. There is no `timeoutMs` option; this is the transport's timeout, not a
@@ -212,6 +213,7 @@ await ep.close()
 | Member | Description |
 |--------|-------------|
 | `Endpoint.bind(options?)` | `options.secretKey?: SecretKey`, `options.alpns?: (string \| Uint8Array)[]`, `options.relayUrls?: string[]` |
+| `Endpoint.bindLookupOnly(options?)` | Same options as `bind`; resolves peers through n0's HTTPS pkarr service without publishing the endpoint's address |
 | `id` | hex-encoded endpoint id (public key) |
 | `addr` | `EndpointAddr` with the relay URLs known so far; call `online()` first |
 | `online()` | resolves once connected to a home relay |

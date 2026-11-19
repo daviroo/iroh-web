@@ -10,7 +10,8 @@ mod streams;
 use iroh::{
     Endpoint as IrohEndpoint, EndpointAddr as IrohEndpointAddr, EndpointId, RelayMode, RelayUrl,
     SecretKey,
-    endpoint::{Connection as IrohConnection, VarInt, presets},
+    address_lookup::PkarrResolver,
+    endpoint::{Connection as IrohConnection, VarInt, default_relay_mode, presets},
 };
 use iroh_tickets::{Ticket, endpoint::EndpointTicket};
 use js_sys::{Promise, Uint8Array};
@@ -160,6 +161,25 @@ impl Endpoint {
         #[wasm_bindgen(unchecked_param_type = "Uint8Array[]")] alpns: js_sys::Array,
         relay_urls: Option<Vec<String>>,
     ) -> Promise {
+        Self::bind_inner(secret_key, alpns, relay_urls, false)
+    }
+
+    /// Binds an endpoint that resolves peer addresses over HTTPS pkarr without publishing its own.
+    #[wasm_bindgen(js_name = bindLookupOnly, unchecked_return_type = "Promise<Endpoint>")]
+    pub fn bind_lookup_only(
+        secret_key: Option<Vec<u8>>,
+        #[wasm_bindgen(unchecked_param_type = "Uint8Array[]")] alpns: js_sys::Array,
+        relay_urls: Option<Vec<String>>,
+    ) -> Promise {
+        Self::bind_inner(secret_key, alpns, relay_urls, true)
+    }
+
+    fn bind_inner(
+        secret_key: Option<Vec<u8>>,
+        alpns: js_sys::Array,
+        relay_urls: Option<Vec<String>>,
+        lookup_only: bool,
+    ) -> Promise {
         future_to_promise(async move {
             let alpns = alpns
                 .iter()
@@ -171,6 +191,9 @@ impl Endpoint {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let mut builder = match relay_urls {
+                None if lookup_only => {
+                    IrohEndpoint::builder(presets::Minimal).relay_mode(default_relay_mode())
+                }
                 None => IrohEndpoint::builder(presets::N0),
                 Some(urls) => {
                     if urls.is_empty() {
@@ -186,6 +209,9 @@ impl Endpoint {
                     IrohEndpoint::builder(presets::Minimal).relay_mode(RelayMode::custom(urls))
                 }
             };
+            if lookup_only {
+                builder = builder.address_lookup(PkarrResolver::n0_dns());
+            }
             if let Some(bytes) = secret_key {
                 builder = builder.secret_key(parse_secret_key(&bytes)?);
             }

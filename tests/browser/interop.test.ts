@@ -19,6 +19,24 @@ describe('iroh 1.2 browser ↔ Rust iroh =1.0.0 (relay-only)', () => {
     await commands.stopNativePeer()
   })
 
+  test('lookup-only endpoint resolves a bare peer ID without publishing', async () => {
+    const endpoint = await Endpoint.bindLookupOnly({ relayUrls: [inject('relayUrl')] })
+    try {
+      await endpoint.online()
+      const conn = await endpoint.connect(native.id, ALPN)
+      try {
+        expect(conn.remoteId).toBe(native.id)
+        const { writable, readable } = await conn.openBi()
+        const payload = new TextEncoder().encode('bare ID request')
+        await writeAll(writable, payload)
+        expect(await readAll(readable)).toEqual(payload)
+      } finally { conn.close() }
+    } finally { await endpoint.close() }
+    const methods = await commands.nativePkarrMethods()
+    expect(methods).toContain('GET')
+    expect(methods.every((method) => method === 'GET')).toBe(true)
+  })
+
   test('browser dials native ticket; request FIN precedes echo and response FIN', async () => {
     expect(EndpointAddr.fromTicket(native.ticket).relayUrls).toEqual(browser!.addr.relayUrls)
     const conn = await browser!.connect(native.ticket, ALPN)
