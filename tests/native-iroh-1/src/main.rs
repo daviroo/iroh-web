@@ -3,6 +3,7 @@ use std::{io::Write, time::Duration};
 use anyhow::{Context, Result};
 use iroh::{
     Endpoint, RelayMode, RelayUrl,
+    address_lookup::EndpointInfo,
     endpoint::{Connection, presets},
 };
 use iroh_tickets::endpoint::EndpointTicket;
@@ -77,7 +78,15 @@ async fn main() -> Result<()> {
     tokio::time::timeout(Duration::from_secs(20), ep.online())
         .await
         .context("iroh 1.0 relay registration timed out")?;
-    emit(json!({"ticket": EndpointTicket::new(ep.addr()).to_string(), "id": ep.id().to_string()}))?;
+    let record = EndpointInfo::from(ep.addr())
+        .to_pkarr_signed_packet(ep.secret_key(), 60)
+        .context("sign pkarr address record")?;
+    emit(json!({
+        "ticket": EndpointTicket::new(ep.addr()).to_string(),
+        "id": ep.id().to_string(),
+        "pkarrKey": ep.id().to_z32(),
+        "pkarrPayload": record.to_relay_payload()
+    }))?;
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     loop {
         tokio::select! {
