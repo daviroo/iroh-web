@@ -47,6 +47,10 @@ in Chromium that no wasm is fetched initially, then binds an endpoint after a cl
   `EndpointAddr` carrying the peer's relay URL. Use `Endpoint.bindLookupOnly` to dial
   a bare ID published to n0's pkarr service without publishing your own address there.
   Your endpoint still registers with its transport relay.
+- **Fully qualified relay names.** iroh writes relay hostnames with a trailing dot
+  (n0's relays are `…relay.n0.iroh.link.`). WebKit rejects the relay's TLS certificate
+  for such a name, so iroh-web strips the dot from the URL it passes to `WebSocket`.
+  Relay URLs in addresses and tickets keep the dot.
 - **Connect deadline.** Ticket-based dialing to an unreachable relay rejects with
   `IrohError` code `timed_out` after approximately 30 seconds in the tested iroh 1.2
   build. There is no `timeoutMs` option; this is the transport's timeout, not a
@@ -62,7 +66,7 @@ in Chromium that no wasm is fetched initially, then binds an endpoint after a cl
 |------|------|
 | `crates/iroh-web-wasm/` | Rust crate: minimal, low-level `wasm-bindgen` exports around `iroh::Endpoint` |
 | `packages/iroh-web/` | The npm package: TypeScript wrapper (`src/`) plus the `wasm-pack` output (`pkg/`, generated) |
-| `tests/` | Chromium tests against Node iroh 1.1 and an isolated Rust iroh 1.0 peer, plus a lazy Vite build/runtime check |
+| `tests/` | Chromium, Firefox and WebKit tests against Node iroh 1.1 and an isolated Rust iroh 1.0 peer, plus a lazy Vite build/runtime check |
 | `examples/echo/` | Minimal Vite page: bind an endpoint, show a ticket, dial another tab and get an echo |
 
 The design rule is: keep the `wasm-bindgen` surface small and stable, and put the
@@ -132,7 +136,7 @@ If invoking Vitest directly, first build the native peer from the repository roo
 `pnpm test` first builds `tests/native-iroh-1/` with its own locked Cargo workspace
 (`iroh = "=1.0.0"`, relay/base locked to 1.0.0; the wasm lockfile is untouched).
 It starts `iroh-relay --dev` on port 3340 (plain HTTP, no TLS), launches headless
-Chromium through Playwright, binds endpoints in the page, the Vitest Node process
+Chromium, Firefox and WebKit through Playwright, binds endpoints in each page, the Vitest Node process
 using `@number0/iroh` 1.1, and the Rust 1.0 process, and checks:
 
 - ticket round trip in the browser, and that `@number0/iroh` parses the same ticket
@@ -146,6 +150,8 @@ using `@number0/iroh` 1.1, and the Rust 1.0 process, and checks:
 - Rust 1.0 dials a browser ticket, sends bytes + FIN and reads echo through FIN;
   native IP transports are disabled so neither direction can bypass the relay
 - an unreachable relay rejects with `timed_out` within 45 seconds
+- relay WebSocket URLs drop a trailing dot from the hostname (unit cases, and a
+  relay configured as `http://localhost.:3340/` is dialled as `ws://localhost:3340/relay`)
 - a production Vite build emits separate lazy JS/wasm files and only fetches wasm
   when the lazy feature is invoked (the check prints the `tests/build/dist/` chunks)
 
@@ -153,7 +159,7 @@ The 1.0/1.2 echo interop checks exercise one bidirectional stream per request,
 with FIN delimiting both the request and response. They verify transport
 compatibility, not application-specific protocols or codecs.
 
-Run `pnpm exec playwright install chromium` in `tests/` once if Chromium is missing.
+Run `pnpm exec playwright install chromium firefox webkit` in `tests/` once if the browsers are missing.
 
 To run against another relay instead of a local one, for example n0's public relay
 (rate-limited, development only):

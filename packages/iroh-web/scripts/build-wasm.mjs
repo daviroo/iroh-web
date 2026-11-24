@@ -1,9 +1,8 @@
 // Builds crates/iroh-web-wasm with wasm-pack (bundler target) into ./pkg and
 // shrinks the result with wasm-opt. Pass --dev for a fast unoptimised build.
 import { execFileSync } from 'node:child_process'
-import { existsSync, statSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -38,6 +37,28 @@ run('wasm-pack', [
   'iroh_web_wasm',
   '--no-pack',
 ])
+
+routeWebSocketsThroughRelayUrl(resolve(outDir, 'iroh_web_wasm_bg.js'))
+
+// The only WebSockets the wasm opens are iroh relay connections. Pass each URL
+// through relayWebSocketUrl (src/relay-websocket-url.ts) before the browser
+// sees it. Fails the build if the glue no longer has the expected shape.
+function routeWebSocketsThroughRelayUrl(gluePath) {
+  const glue = readFileSync(gluePath, 'utf8')
+  const constructor = /new WebSocket\((getStringFromWasm0\(arg0, arg1\))/g
+  const routed = glue.replace(constructor, 'new WebSocket(relayWebSocketUrl($1)')
+  const total = glue.split('new WebSocket(').length - 1
+  const rewritten = routed.split('new WebSocket(relayWebSocketUrl(').length - 1
+  if (total === 0 || rewritten !== total) {
+    throw new Error(
+      `${gluePath}: expected every \`new WebSocket(getStringFromWasm0(arg0, arg1)…)\` to be rewritten, ` +
+        `rewrote ${rewritten} of ${total}. Update routeWebSocketsThroughRelayUrl for the new wasm-bindgen glue.`,
+    )
+  }
+  const routedImport = "import { relayWebSocketUrl } from '../dist/relay-websocket-url.js'\n"
+  writeFileSync(gluePath, routedImport + routed)
+  console.log(`routed ${rewritten} WebSocket constructor(s) through relayWebSocketUrl`)
+}
 
 const wasmFile = resolve(outDir, 'iroh_web_wasm_bg.wasm')
 if (!dev) {
