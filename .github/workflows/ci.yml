@@ -48,7 +48,7 @@ jobs:
           echo "$RUNNER_TEMP/iroh-tools/binaryen-version_132/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TEMP/iroh-tools" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter iroh-web-tests exec playwright install --with-deps chromium
+      - run: pnpm --filter iroh-web-tests exec playwright install --with-deps chromium firefox webkit
       - run: pnpm build
       - run: pnpm typecheck
       - run: cargo clippy --target wasm32-unknown-unknown -p iroh-web-wasm -- -D warnings
