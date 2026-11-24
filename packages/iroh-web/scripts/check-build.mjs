@@ -8,7 +8,7 @@ const required = [
   'pkg/iroh_web_wasm_bg.wasm.d.ts',
   'dist/index.js',
   'dist/index.d.ts',
-  'dist/relay-websocket-url.js',
+  'dist/request-url.js',
 ]
 const missing = required.filter((file) => !existsSync(new URL(`../${file}`, import.meta.url)))
 if (missing.length) {
@@ -17,7 +17,7 @@ if (missing.length) {
 }
 
 const glue = readFileSync(new URL('../pkg/iroh_web_wasm_bg.js', import.meta.url), 'utf8')
-if (!glue.includes('new WebSocket(relayWebSocketUrl(')) {
-  console.error('pkg/iroh_web_wasm_bg.js does not route WebSockets through relayWebSocketUrl. Rebuild with pnpm build.')
+if (!glue.includes('new WebSocket(requestUrl(') || !glue.includes('new Request(requestUrl(')) {
+  console.error('pkg/iroh_web_wasm_bg.js does not route WebSocket and Request URLs through requestUrl. Rebuild with pnpm build.')
   process.exit(1)
 }

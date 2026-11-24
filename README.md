@@ -49,8 +49,9 @@ in Chromium that no wasm is fetched initially, then binds an endpoint after a cl
   Your endpoint still registers with its transport relay.
 - **Fully qualified relay names.** iroh writes relay hostnames with a trailing dot
   (n0's relays are `…relay.n0.iroh.link.`). WebKit rejects the relay's TLS certificate
-  for such a name, so iroh-web strips the dot from the URL it passes to `WebSocket`.
-  Relay URLs in addresses and tickets keep the dot.
+  for such a name, so iroh-web strips the dot from every URL it passes to the browser
+  (relay WebSockets, the relay latency probe and other `fetch` requests). Relay URLs in
+  addresses and tickets keep the dot.
 - **Connect deadline.** Ticket-based dialing to an unreachable relay rejects with
   `IrohError` code `timed_out` after approximately 30 seconds in the tested iroh 1.2
   build. There is no `timeoutMs` option; this is the transport's timeout, not a
@@ -150,8 +151,9 @@ using `@number0/iroh` 1.1, and the Rust 1.0 process, and checks:
 - Rust 1.0 dials a browser ticket, sends bytes + FIN and reads echo through FIN;
   native IP transports are disabled so neither direction can bypass the relay
 - an unreachable relay rejects with `timed_out` within 45 seconds
-- relay WebSocket URLs drop a trailing dot from the hostname (unit cases, and a
-  relay configured as `http://localhost.:3340/` is dialled as `ws://localhost:3340/relay`)
+- request URLs drop a trailing dot from the hostname (unit cases, and with a relay
+  configured as `http://localhost.:3340/` the browser opens `ws://localhost:3340/relay`
+  and probes `http://localhost:3340/ping`)
 - a production Vite build emits separate lazy JS/wasm files and only fetches wasm
   when the lazy feature is invoked (the check prints the `tests/build/dist/` chunks)
 
