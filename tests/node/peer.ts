@@ -20,7 +20,9 @@ interface Peer {
   accepted: string[]
 }
 
-let peer: Peer | undefined
+// One peer per browser session: browser instances (chromium, firefox, webkit)
+// run their test files concurrently in this Node process.
+const peers = new Map<string, Peer>()
 
 async function echo(conn: Connection): Promise<void> {
   const bi = await conn.acceptBi()
@@ -49,8 +51,9 @@ async function acceptLoop(p: Peer): Promise<void> {
 }
 
 /** Starts (or returns) the Node echo peer and returns its ticket. */
-export const startNodePeer: BrowserCommand<[relayUrl: string]> = async (_ctx, relayUrl) => {
-  if (peer) return { ticket: peer.ticket, id: peer.endpoint.id().toString() }
+export const startNodePeer: BrowserCommand<[relayUrl: string]> = async (ctx, relayUrl) => {
+  const existing = peers.get(ctx.sessionId)
+  if (existing) return { ticket: existing.ticket, id: existing.endpoint.id().toString() }
   const builder = Endpoint.builder()
   presetMinimal(builder)
   builder.relayMode(RelayMode.customFromUrls([relayUrl]))
@@ -58,17 +61,19 @@ export const startNodePeer: BrowserCommand<[relayUrl: string]> = async (_ctx, re
   const endpoint = await builder.bind()
   await endpoint.online()
   const ticket = EndpointTicket.fromAddr(endpoint.addr()).toString()
-  peer = { endpoint, ticket, accepted: [] }
+  const peer: Peer = { endpoint, ticket, accepted: [] }
+  peers.set(ctx.sessionId, peer)
   void acceptLoop(peer)
   return { ticket, id: endpoint.id().toString() }
 }
 
 /** Dials `ticket` from the Node peer, sends `payload` on a bi stream and returns the echoed bytes. */
 export const nodeDial: BrowserCommand<[ticket: string, payload: number[]]> = async (
-  _ctx,
+  ctx,
   ticket,
   payload,
 ) => {
+  const peer = peers.get(ctx.sessionId)
   if (!peer) throw new Error('startNodePeer first')
   const addr = EndpointTicket.fromString(ticket).endpointAddr()
   const conn = await peer.endpoint.connect(addr, alpnBytes)
@@ -82,7 +87,8 @@ export const nodeDial: BrowserCommand<[ticket: string, payload: number[]]> = asy
 
 /** Dials `ticket` and immediately closes the connection with an application error code. */
 export const nodeDialAndClose: BrowserCommand<[ticket: string, errorCode: number, reason: string]> =
-  async (_ctx, ticket, errorCode, reason) => {
+  async (ctx, ticket, errorCode, reason) => {
+    const peer = peers.get(ctx.sessionId)
     if (!peer) throw new Error('startNodePeer first')
     const addr = EndpointTicket.fromString(ticket).endpointAddr()
     const conn = await peer.endpoint.connect(addr, alpnBytes)
@@ -101,10 +107,11 @@ export const nodeParseTicket: BrowserCommand<[ticket: string]> = async (_ctx, ti
   return { id: addr.id().toString(), relayUrl: addr.relayUrl() }
 }
 
-export const stopNodePeer: BrowserCommand<[]> = async () => {
+export const stopNodePeer: BrowserCommand<[]> = async (ctx) => {
+  const peer = peers.get(ctx.sessionId)
   if (!peer) return
+  peers.delete(ctx.sessionId)
   await peer.endpoint.close()
-  peer = undefined
 }
 
 declare module '@vitest/browser/context' {

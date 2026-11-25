@@ -1,9 +1,8 @@
 // Builds crates/iroh-web-wasm with wasm-pack (bundler target) into ./pkg and
 // shrinks the result with wasm-opt. Pass --dev for a fast unoptimised build.
 import { execFileSync } from 'node:child_process'
-import { existsSync, statSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -38,6 +37,36 @@ run('wasm-pack', [
   'iroh_web_wasm',
   '--no-pack',
 ])
+
+routeRequestUrls(resolve(outDir, 'iroh_web_wasm_bg.js'))
+
+// Every network request the wasm makes (relay WebSockets, the relay latency
+// probe, pkarr lookups) passes its URL through requestUrl
+// (src/request-url.ts) before the browser sees it. `fetch` in the glue only
+// takes Request objects, so routing `new Request` covers it. Fails the build
+// if any call that can carry a URL is left unrouted, for example after a
+// wasm-bindgen upgrade or a new dependency.
+function routeRequestUrls(gluePath) {
+  const glue = readFileSync(gluePath, 'utf8')
+  const routed = glue.replace(
+    /new (WebSocket|Request)\((getStringFromWasm0\(arg0, arg1\))/g,
+    'new $1(requestUrl($2)',
+  )
+  const unrouted = [
+    [/new (?:WebSocket|Request)\((?!requestUrl\()/g, 'WebSocket or Request constructor'],
+    [/\bfetch\((?!getObject\(arg[01]\)\))/g, 'fetch with a URL argument'],
+    [/new EventSource\(|new XMLHttpRequest\(|sendBeacon\(|new Worker\(|new SharedWorker\(/g, 'other URL-taking call'],
+  ].flatMap(([pattern, what]) => [...routed.matchAll(pattern)].map((m) => `${what} at offset ${m.index}: ${routed.slice(m.index, m.index + 80)}`))
+  const count = routed.split('(requestUrl(').length - 1
+  if (unrouted.length > 0 || count === 0) {
+    throw new Error(
+      `${gluePath}: every URL passed to the browser must go through requestUrl; ` +
+        `routed ${count}, unrouted:\n${unrouted.join('\n')}\nUpdate routeRequestUrls for the new glue.`,
+    )
+  }
+  writeFileSync(gluePath, "import { requestUrl } from '../dist/request-url.js'\n" + routed)
+  console.log(`routed ${count} WebSocket/Request URL(s) through requestUrl`)
+}
 
 const wasmFile = resolve(outDir, 'iroh_web_wasm_bg.wasm')
 if (!dev) {
